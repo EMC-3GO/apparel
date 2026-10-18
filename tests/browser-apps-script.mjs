@@ -7,9 +7,10 @@ const backend=server();
 const html=await readFile(new URL('../public/apps-script/ANFFEL.html',import.meta.url),'utf8');
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
 try{
+ let rejectDelete=false;
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- await page.exposeFunction('__appsScriptInvoke',(name,arg)=>backend.call(name,arg));
+ await page.exposeFunction('__appsScriptInvoke',(name,arg)=>{if(rejectDelete&&name==='saveLedgerOperation'&&arg.action==='delete'){rejectDelete=false;throw new Error('削除の通信テスト');}return backend.call(name,arg);});
  await page.addInitScript(()=>{
   const runner=(success,fail)=>new Proxy({}, {get:(_,name)=>{
    if(name==='withSuccessHandler')return callback=>runner(callback,fail);
@@ -49,9 +50,55 @@ try{
  await page.getByRole('button',{name:'収支報告書を作成',exact:true}).click();
  const file=await download;assert.equal(file.suggestedFilename(),'ANFFEL_収支報告書_2026-10.pdf');
  await page.getByRole('link',{name:'スプレッドシートで開く',exact:true}).waitFor();
+ // Expense deletion must remove the source row, not just hide it in React.
+ await page.getByRole('button',{name:'支出一覧',exact:true}).click();
+ await page.getByRole('button',{name:'Google保存の検証を編集',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'削除',exact:true}).click();
+ await page.getByRole('button',{name:'削除する',exact:true}).click();
+ await page.getByRole('dialog').waitFor({state:'hidden'});
+ assert.equal(backend.ledger.getSheetByName('収支記録').rows.some(row=>row[4]==='Google保存の検証'),false);
+ // Create and select a product, then ensure all-period references block deletion.
+ await page.getByRole('button',{name:'商品別の収支',exact:true}).click();
+ await page.getByRole('button',{name:'商品を登録',exact:true}).click();
+ await page.getByLabel('商品名',{exact:true}).fill('削除確認の商品');await page.getByLabel('販売価格（円）',{exact:true}).fill('1000');
+ await page.getByRole('button',{name:'登録する',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ const productId=backend.call('getLedger').data.products.find(p=>p.name==='削除確認の商品').id;
+ await page.locator('.product-card').filter({has:page.getByRole('heading',{name:'削除確認の商品',exact:true})}).click();
+ await page.getByRole('button',{name:'edit',exact:true}).click();
+ await page.getByLabel('タイトル',{exact:true}).fill('削除確認の売上');await page.getByLabel('日付',{exact:true}).fill('2025-01-01');
+ await page.getByLabel('対象商品',{exact:true}).selectOption(productId);
+ await page.getByRole('button',{name:'登録する',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ await page.getByRole('button',{name:'商品を編集',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'削除',exact:true}).click();
+ await page.getByRole('alert').getByText('先に関連する記録',{exact:false}).waitFor();
+ assert.equal(await page.getByRole('button',{name:'削除する',exact:true}).isDisabled(),true);
+ await page.getByRole('button',{name:'キャンセル',exact:true}).click();
+ await page.getByRole('button',{name:'累計',exact:true}).click();
+ await page.getByRole('button',{name:'収入一覧',exact:true}).click();
+ await page.getByRole('button',{name:'削除確認の売上を編集',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'削除',exact:true}).click();
+ await page.getByRole('button',{name:'削除する',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ assert.equal(backend.ledger.getSheetByName('収支記録').rows.some(row=>row[4]==='削除確認の売上'),false);
+ await page.getByRole('button',{name:'商品別の収支',exact:true}).click();
+ await page.locator('.product-card').filter({has:page.getByRole('heading',{name:'削除確認の商品',exact:true})}).click();
+ await page.getByRole('button',{name:'商品を編集',exact:true}).click();
+ await page.getByRole('dialog').getByRole('button',{name:'削除',exact:true}).click();
+ await page.getByRole('button',{name:'戻る',exact:true}).click();assert.equal(await page.getByRole('button',{name:'削除する',exact:true}).count(),0);
+ await page.getByRole('dialog').getByRole('button',{name:'削除',exact:true}).click();
+ rejectDelete=true;await page.getByRole('button',{name:'削除する',exact:true}).click();
+ await page.getByText('削除の通信テスト',{exact:true}).waitFor();assert.equal(backend.ledger.getSheetByName('商品').rows.some(row=>row[0]===productId),true);
+ // Lost acknowledgement after physical deletion: confirmation stays open; retry is safe.
+ backend.failCompletion();await page.getByRole('button',{name:'削除する',exact:true}).click();
+ await page.getByText('simulated lost acknowledgement',{exact:false}).waitFor();
+ assert.equal(backend.ledger.getSheetByName('商品').rows.some(row=>row[0]===productId),false);
+ await page.getByRole('button',{name:'削除する',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+ assert.equal(await page.locator('.product-card').count(),3); // The selected-product filter resets.
+ await page.reload();await page.getByRole('link',{name:'保存先のスプレッドシートを開く',exact:true}).waitFor();
+ await page.getByRole('button',{name:'商品別の収支',exact:true}).click();assert.equal(await page.locator('.product-card').count(),3);
+ assert.equal(backend.call('getLedger').data.products.length,3);
  await page.setViewportSize({width:390,height:844});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
  await page.screenshot({path:'/tmp/anffel-apps-script-mobile.png',fullPage:true});
  assert.deepEqual(errors,[]);
- console.log('Apps Script UI checks passed against the simulated Google services: migration, persistent save, failure retention, idempotent retry, reload, report creation/PDF handoff, mobile layout.');
+ console.log('Apps Script UI checks passed against the simulated Google services: migration, persistent save, failure retention, idempotent retry, reload, report creation/PDF handoff, income/expense/product row deletion, reference protection, deletion failure/retry and mobile layout.');
 }finally{await browser.close();}

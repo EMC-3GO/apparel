@@ -3,8 +3,8 @@ function validDate(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.tes
 export function validateOperation(operation,state,{migrating=false}={}){
  if(!['products','records'].includes(operation.entity)||!['upsert','delete'].includes(operation.action))throw new Error('保存する内容を確認してください。');
  if(operation.action==='delete'){
-  if(operation.entity!=='records')throw new Error('商品は削除できません。');
-  if(!state.records.some(r=>r.id===operation.id))throw new Error('この記録は既に削除されています。再読み込みしてください。');
+  if(!state[operation.entity].some(item=>item.id===operation.id))throw new Error('この'+(operation.entity==='products'?'商品':'記録')+'は既に削除されています。再読み込みしてください。');
+  if(operation.entity==='products'&&state.records.some(r=>r.productId===operation.id))throw new Error('この商品には収入・支出などの記録があります。先に関連する記録を削除するか、対象商品を変更してください。');
   return operation;
  }
  const item={...operation.item};

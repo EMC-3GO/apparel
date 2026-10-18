@@ -71,3 +71,44 @@ test('manual spreadsheet edits invalidate stale versions and corrupted rows stop
  s.ledger.getSheetByName('商品').rows[1][2]='壊れた価格';
  assert.throws(()=>s.call('getLedger'),/価格/);
 });
+
+test('product deletion removes its actual sheet row and preserves other products; linked records prevent deletion',async()=>{
+ const s=server();s.call('initializeLedger',{data:{products:[product,{...product,id:'keep',name:'残す商品'}],records:[record,{...record,id:'expense',type:'expense',category:'サンプル代',amount:1000}]}});
+ let sequence=0;const store=new AppsScriptLedgerStore({call:async(name,arg)=>s.call(name,arg),uuid:()=>`delete-${++sequence}`});await store.connect();
+ await assert.rejects(()=>store.save({entity:'products',action:'delete',id:'p'}),/先に関連する記録/);
+ assert.equal(s.ledger.getSheetByName('商品').getLastRow(),3);
+ for(const id of ['r','expense']){
+  await store.save({entity:'records',action:'delete',id});
+  assert.equal(s.ledger.getSheetByName('収支記録').rows.some(row=>row[0]===id),false);
+ }
+ assert.equal(s.ledger.getSheetByName('収支記録').getLastRow(),1);
+ await store.save({entity:'products',action:'delete',id:'p'});
+ assert.equal(s.ledger.getSheetByName('商品').getLastRow(),2);
+ assert.equal(s.ledger.getSheetByName('商品').rows.some(row=>row[0]==='p'),false);
+ assert.deepEqual((await new AppsScriptLedgerStore({call:async(name,arg)=>s.call(name,arg)}).connect()).data,{products:[{...product,id:'keep',name:'残す商品',subtitle:'',color:'sand'}],records:[]});
+});
+
+test('interrupted deletes recover by ID without deleting adjacent rows; stale deletes cannot remove changed products',()=>{
+ for(const entity of ['products','records']){
+  const s=server();s.call('initializeLedger',{data:{products:entity==='products'?[product,{...product,id:'keep'}]:[product],records:entity==='records'?[record,{...record,id:'keep'}]:[]}});
+  const initial=s.call('getLedger'),id=entity==='products'?'p':'r';
+  const request={entity,action:'delete',id,eventId:'delete-once',expectedVersion:initial.versions[entity][id]};
+  s.failCompletion();assert.throws(()=>s.call('saveLedgerOperation',request),/simulated/);
+  const recovered=s.call('saveLedgerOperation',request);assert.deepEqual(recovered.data[entity].map(item=>item.id),['keep']);
+  assert.equal(s.ledger.getSheetByName(entity==='products'?'商品':'収支記録').getLastRow(),2);
+  assert.equal(s.ledger.getSheetByName('変更履歴').getLastRow(),2);
+ }
+ const s=server(),start=initialize(s);
+ s.call('saveLedgerOperation',op('products',{...product,price:5000},'update',start.versions.products.p));
+ assert.throws(()=>s.call('saveLedgerOperation',{entity:'products',action:'delete',id:'p',eventId:'stale-delete',expectedVersion:start.versions.products.p}),/別の画面/);
+});
+
+test('a report generated after deleting income and expenses reflects current sheet contents',()=>{
+ const s=server();s.call('initializeLedger',{data:{products:[product],records:[record,{...record,id:'expense',type:'expense',category:'サンプル代',amount:1000}]}});
+ const before=s.call('createIncomeReport',{range:'all'});
+ for(const id of ['r','expense']){const state=s.call('getLedger');s.call('saveLedgerOperation',{entity:'records',action:'delete',id,eventId:'remove-'+id,expectedVersion:state.versions.records[id]});}
+ const after=s.call('createIncomeReport',{range:'all'});assert.notEqual(before.id,after.id);
+ const rows=s.books.get(after.id).getSheets()[0].rows;
+ assert.equal(rows.find(r=>r[0]==='売上（値引き・返品反映後）')[2],0);
+ assert.equal(s.call('getLedger').data.records.length,0);
+});
