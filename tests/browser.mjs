@@ -11,6 +11,7 @@ await page.getByRole('link',{name:'ANFFEL アパレル事業の収支管理'}).w
 assert.equal(await page.getByRole('button',{name:'収入・支出を記録',exact:true}).count(),0);
 // The home screen keeps detailed calculations out of the initial view.
 assert.equal(await page.locator('.product-card').count(),0);
+assert.equal(await page.locator('.records-panel').count(),0);
 assert.equal(await page.locator('.breakdown').getAttribute('open'),null);
 await page.locator('.breakdown summary').click();
 await page.getByRole('heading',{name:'利益の内訳',exact:true}).waitFor();
@@ -30,6 +31,7 @@ await page.getByRole('textbox',{name:'記録を検索'}).fill('検証用');
 assert.equal(await page.locator('tbody tr').count(),1);
 await page.getByText('+￥173,000',{exact:true}).waitFor();
 await page.reload();
+await page.getByRole('button',{name:'収入一覧',exact:true}).click();
 await page.getByRole('button',{name:'検証用売上を編集'}).click();
 dialog=page.getByRole('dialog');
 await dialog.getByLabel('販売数量').fill('2');
@@ -50,7 +52,10 @@ await page.getByRole('button',{name:'確定を取り消す',exact:true}).waitFor
 await page.getByRole('button',{name:'ダッシュボード',exact:true}).click();
 await page.getByRole('button',{name:'月別',exact:true}).click();
 await page.getByLabel('集計月').fill('2026-04');
+assert.equal(await page.locator('.metrics .metric-value').allTextContents().then(v=>v.every(t=>t==='￥0')),true);
+await page.getByRole('button',{name:'支出一覧',exact:true}).click();
 await page.getByText('この条件に合う記録はありません。').waitFor();
+await page.getByRole('button',{name:'ダッシュボード',exact:true}).click();
 await page.getByRole('button',{name:'累計',exact:true}).click();
 // Shared expenses clear a previously selected product and cannot be reassigned.
 await page.getByRole('button',{name:'edit',exact:true}).click();
