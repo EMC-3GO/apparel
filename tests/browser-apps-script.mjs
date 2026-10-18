@@ -1,0 +1,57 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {server} from './helpers/apps-script-server.js';
+import {initialData} from '../src/ledger.js';
+const backend=server();
+const html=await readFile(new URL('../public/apps-script/ANFFEL.html',import.meta.url),'utf8');
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.exposeFunction('__appsScriptInvoke',(name,arg)=>backend.call(name,arg));
+ await page.addInitScript(()=>{
+  const runner=(success,fail)=>new Proxy({}, {get:(_,name)=>{
+   if(name==='withSuccessHandler')return callback=>runner(callback,fail);
+   if(name==='withFailureHandler')return callback=>runner(success,callback);
+   return arg=>globalThis.__appsScriptInvoke(name,arg).then(success).catch(error=>fail({message:error.message}));
+  }});
+  globalThis.google={script:{run:runner(()=>{},()=>{})}};
+ });
+ await page.route('https://anffel-apps-script.test/**',route=>route.fulfill({status:200,contentType:'text/html',body:html}));
+ await page.goto('https://anffel-apps-script.test/');
+ await page.getByRole('heading',{name:'これまでのデータを引き継ぐ',exact:true}).waitFor();
+ await page.getByLabel('引き継ぎファイル（JSON）',{exact:true}).setInputFiles({name:'transfer.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({format:'anffel-ledger-transfer',version:1,data:initialData()}))});
+ await page.getByText('商品3件・記録39件を引き継ぎます。元のブラウザデータは削除しません。',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'このデータを移行',exact:true}).click();
+ await page.getByRole('link',{name:'保存先のスプレッドシートを開く',exact:true}).waitFor();
+ assert.equal(await page.locator('.metrics .metric-value').first().textContent(),'￥2,014,200');
+ await page.getByRole('button',{name:'edit',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ await dialog.getByRole('button',{name:'支出',exact:true}).click();
+ await dialog.getByLabel('項目',{exact:true}).selectOption('広告宣伝費');
+ assert.equal(await dialog.getByLabel('対象商品',{exact:true}).isDisabled(),true);
+ await dialog.getByLabel('タイトル',{exact:true}).fill('Google保存の検証');
+ await dialog.getByLabel('金額（円）',{exact:true}).fill('2000');
+ backend.failCompletion();
+ await dialog.getByRole('button',{name:'登録する',exact:true}).click();
+ await dialog.getByRole('alert').waitFor();
+ assert.equal(await dialog.getByLabel('タイトル',{exact:true}).inputValue(),'Google保存の検証');
+ assert.equal(await dialog.isVisible(),true);
+ await dialog.getByRole('button',{name:'登録する',exact:true}).click();
+ await dialog.waitFor({state:'hidden'});
+ assert.equal(backend.call('getLedger').data.records.filter(r=>r.title==='Google保存の検証').length,1);
+ await page.reload();
+ await page.getByRole('link',{name:'保存先のスプレッドシートを開く',exact:true}).waitFor();
+ await page.getByRole('button',{name:'月別',exact:true}).click();
+ await page.getByLabel('集計月',{exact:true}).fill('2026-10');
+ const download=page.waitForEvent('download');
+ await page.getByRole('button',{name:'収支報告書を作成',exact:true}).click();
+ const file=await download;assert.equal(file.suggestedFilename(),'ANFFEL_収支報告書_2026-10.pdf');
+ await page.getByRole('link',{name:'スプレッドシートで開く',exact:true}).waitFor();
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ await page.screenshot({path:'/tmp/anffel-apps-script-mobile.png',fullPage:true});
+ assert.deepEqual(errors,[]);
+ console.log('Apps Script UI checks passed against the simulated Google services: migration, persistent save, failure retention, idempotent retry, reload, report creation/PDF handoff, mobile layout.');
+}finally{await browser.close();}
