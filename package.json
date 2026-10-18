@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
     "build:apps-script": "npm run build",
-    "test:browser": "node tests/browser.mjs && node tests/browser-apps-script.mjs"
+    "test:browser": "node tests/browser.mjs && node tests/browser-apps-script.mjs && node tests/browser-entrance.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
