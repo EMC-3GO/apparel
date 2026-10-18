@@ -52,6 +52,42 @@ await page.getByRole('button',{name:'月別',exact:true}).click();
 await page.getByLabel('集計月').fill('2026-04');
 await page.getByText('この条件に合う記録はありません。').waitFor();
 await page.getByRole('button',{name:'累計',exact:true}).click();
+// Shared expenses clear a previously selected product and cannot be reassigned.
+await page.getByRole('button',{name:'edit',exact:true}).click();
+dialog=page.getByRole('dialog');
+await dialog.getByRole('button',{name:'支出',exact:true}).click();
+const targetProduct=dialog.getByLabel('対象商品',{exact:true});
+await targetProduct.selectOption('p2');
+for (const category of ['発送送料','販売手数料','人件費','広告宣伝費','その他経費']) {
+ await dialog.getByLabel('項目',{exact:true}).selectOption(category);
+ assert.equal(await targetProduct.isDisabled(),true);
+ assert.equal(await targetProduct.inputValue(),'');
+ assert.equal(await targetProduct.locator('option').count(),1);
+ assert.equal(await targetProduct.locator('option').textContent(),'共通の支出');
+}
+for (const category of ['製造費','サンプル代','タグ・資材']) {
+ await dialog.getByLabel('項目',{exact:true}).selectOption(category);
+ assert.equal(await targetProduct.isEnabled(),true);
+ assert.equal(await targetProduct.inputValue(),'');
+ await targetProduct.selectOption('p2');
+ await dialog.getByLabel('項目',{exact:true}).selectOption('広告宣伝費');
+}
+await dialog.getByLabel('タイトル',{exact:true}).fill('共通支出の分類確認');
+await dialog.getByLabel('金額（円）',{exact:true}).fill('1200');
+await dialog.getByRole('button',{name:'登録する',exact:true}).click();
+const savedCommon=await page.evaluate(()=>JSON.parse(localStorage.getItem('atelier-ledger-v1')).records.find(r=>r.title==='共通支出の分類確認'));
+assert.equal(savedCommon.productId,'');
+await page.getByRole('button',{name:'共通の収支',exact:true}).click();
+await page.getByRole('textbox',{name:'記録を検索'}).fill('共通支出の分類確認');
+assert.equal(await page.locator('tbody tr').count(),1);
+await page.getByText('共通の支出',{exact:true}).waitFor();
+await page.reload();
+await page.getByRole('button',{name:'共通の収支',exact:true}).click();
+await page.getByRole('button',{name:'共通支出の分類確認を編集',exact:true}).click();
+dialog=page.getByRole('dialog');
+assert.equal(await dialog.getByLabel('対象商品',{exact:true}).isDisabled(),true);
+await dialog.getByRole('button',{name:'キャンセル',exact:true}).click();
+await page.getByRole('button',{name:'ダッシュボード',exact:true}).click();
 await page.setViewportSize({width:390,height:844});
 await page.waitForTimeout(300);
 console.log('mobile dimensions',await page.evaluate(()=>({width:window.innerWidth,scroll:document.documentElement.scrollWidth})));
@@ -68,6 +104,8 @@ dialog=page.getByRole('dialog');
 await dialog.getByRole('button',{name:'支出',exact:true}).click();
 await dialog.getByLabel('タイトル',{exact:true}).fill('スマホで記録した送料');
 await dialog.getByLabel('項目',{exact:true}).selectOption('発送送料');
+assert.equal(await dialog.getByLabel('対象商品',{exact:true}).isDisabled(),true);
+assert.equal(await dialog.getByLabel('対象商品',{exact:true}).inputValue(),'');
 await dialog.getByLabel('金額（円）',{exact:true}).fill('500');
 await dialog.getByRole('button',{name:'登録する',exact:true}).click();
 await page.getByRole('textbox',{name:'記録を検索'}).fill('スマホで記録した送料');
