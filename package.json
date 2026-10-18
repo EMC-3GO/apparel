@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build && node scripts/build-apps-script.mjs",
+    "build": "vite build && node scripts/build-apps-script.mjs && node scripts/build-entrance.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
     "build:apps-script": "npm run build",
