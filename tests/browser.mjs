@@ -12,10 +12,7 @@ assert.equal(await page.getByRole('button',{name:'収入・支出を記録',exac
 // The home screen keeps detailed calculations out of the initial view.
 assert.equal(await page.locator('.product-card').count(),0);
 assert.equal(await page.locator('.records-panel').count(),0);
-assert.equal(await page.locator('.breakdown').getAttribute('open'),null);
-await page.locator('.breakdown summary').click();
-await page.getByRole('heading',{name:'利益の内訳',exact:true}).waitFor();
-await page.locator('.breakdown summary').click();
+assert.equal(await page.locator('.breakdown').count(),0);
 await page.screenshot({path:'/tmp/atelier-desktop.png',fullPage:true});
 await page.getByRole('button',{name:'edit',exact:true}).click();
 let dialog=page.getByRole('dialog');
