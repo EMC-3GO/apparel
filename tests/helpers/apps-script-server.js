@@ -2,14 +2,14 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 export function server(){
- const props=new Map(),books=new Map();let activeUser='owner@example.test',failComplete=false,lockHeld=false,blocked=false;
+ const props=new Map(),books=new Map();let activeUser='owner@example.test',failComplete=null,lockHeld=false,blocked=false;
  const rawWrites=[];
  class Range{
   constructor(sheet,row,col,height,width){Object.assign(this,{sheet,row,col,height,width});}
   getValues(){return Array.from({length:this.height},(_,r)=>Array.from({length:this.width},(_,c)=>this.sheet.rows[this.row+r-1]?.[this.col+c-1]??''));}
   setValues(values){
    rawWrites.push(values);
-   if(failComplete&&this.sheet.name==='変更履歴'&&this.col===3&&values[0][0]==="'保存済み"){failComplete=false;throw new Error('simulated lost acknowledgement');}
+   if(failComplete&&this.sheet.name===failComplete&&this.col===3&&values[0][0]==="'保存済み"){failComplete=null;throw new Error('simulated lost acknowledgement');}
    values.forEach((row,r)=>row.forEach((value,c)=>{this.sheet.rows[this.row+r-1]??=[];this.sheet.rows[this.row+r-1][this.col+c-1]=typeof value==='string'&&value.startsWith("'")?value.slice(1):value;}));return this;
   }
   clearContent(){for(let r=0;r<this.height;r++)for(let c=0;c<this.width;c++)if(this.sheet.rows[this.row+r-1])this.sheet.rows[this.row+r-1][this.col+c-1]='';return this;}
@@ -39,5 +39,5 @@ export function server(){
  vm.createContext(context);vm.runInContext(readFileSync(new URL('../../public/apps-script/Code.gs',import.meta.url),'utf8'),context);
  const call=(name,arg)=>JSON.parse(JSON.stringify(context[name](arg)));
  context.setupAnffel();
- return {call,context,ledger,books,props,rawWrites,setUser:v=>{activeUser=v;},failCompletion:()=>{failComplete=true;},block:()=>{blocked=true;},isLocked:()=>lockHeld};
+ return {call,context,ledger,books,props,rawWrites,setUser:v=>{activeUser=v;},failCompletion:(sheet='変更履歴')=>{failComplete=sheet;},block:()=>{blocked=true;},isLocked:()=>lockHeld};
 }

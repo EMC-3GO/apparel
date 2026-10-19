@@ -1,4 +1,4 @@
-async function rpc(name,arg){
+export async function rpc(name,arg){
  for(let i=0;i<100&&!globalThis.google?.script?.run;i++)await new Promise(resolve=>setTimeout(resolve,100));
  return new Promise((resolve,reject)=>{
   const bridge=globalThis.google?.script?.run;

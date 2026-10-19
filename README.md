@@ -53,3 +53,9 @@ node tests/browser.mjs
 ## パスワード入口（Vercel）
 
 本番ルートはANFFELへのパスワード入口です。設定・保護範囲は [入口のセキュリティ設定](docs/entrance-security.md) を参照してください。旧ブラウザー保存版は `/legacy` に残し、Apps Script版と独立しています。開発時の入口画面は `/entrance/index.html`、サーバーAPIはVercel Node関数です。
+
+## 受注生産管理
+
+左メニューの「受注生産管理」で予約受付と注文を手入力し、3つのチェックで発送までの進捗を管理します。Google版は専用の3シートを追加し、既存の財務データは変更しません。必須項目・進捗・保存方式は [受注生産管理の仕様](docs/preorder-management-plan.md) を参照してください。既存Googleアプリへの反映は `/apps-script/update.html` の更新ガイドを使用します。
+
+`node tests/browser-preorders.mjs` は配布HTMLとGoogleサービスの代替環境を使い、登録・チェック・競合・再試行・既存データの維持を確認します。
