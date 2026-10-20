@@ -27,6 +27,7 @@ export const orderFields=[
  {key:'trackingNumber',header:'追跡番号',max:100},
  {key:'memo',header:'メモ',max:1000},
  ...preorderSteps.map(step=>({...step,header:step.label,type:'boolean'})),
+ {key:'productId',header:'対象商品ID',max:150},
 ];
 export const campaignFields=[
  {key:'id',header:'ID',required:true,max:150},
@@ -39,7 +40,7 @@ export const campaignFields=[
 export function japanToday(){return new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});}
 export function validPreorderDate(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;}
 export function campaignStatus(campaign,today=japanToday()){return today<campaign.startsOn?'受付前':today>campaign.endsOn?'受付終了':'受付中';}
-export function validatePreorderOperation(operation,state){
+export function validatePreorderOperation(operation,state,{reading=false}={}){
  if(!operation||!['orders','campaigns'].includes(operation.entity)||!['upsert','delete'].includes(operation.action))throw new Error('保存する受注内容を確認してください。');
  const entity=operation.entity;
  if(operation.action==='delete'){
@@ -59,7 +60,10 @@ export function validatePreorderOperation(operation,state){
   if(field.type==='date'&&!validPreorderDate(item[field.key]))throw new Error(field.header+'を正しい日付で入力してください。');
  }
  if(entity==='orders'){
-  if(item.campaignId&&!state.campaigns.some(campaign=>campaign.id===item.campaignId))throw new Error('予約受付枠を選び直してください。');
+  const previous=state.orders.find(order=>order.id===item.id);
+  if(!reading&&(!previous||previous.productId!==item.productId)){
+   if(!item.productId||!state.products?.some(product=>product.id===item.productId&&product.mode==='order'))throw new Error('登録済みの受注生産の商品を選択してください。');
+  }
   if(item.shipBy<item.orderedOn)throw new Error('発送期限は注文日以降にしてください。');
   if(item.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(item.email))throw new Error('メールアドレスを確認してください。');
  }else{

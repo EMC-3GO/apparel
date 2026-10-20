@@ -1,0 +1,12 @@
+// Existing keys (tee/shirt/tote) are retained for saved products.
+export const productTypeGroups=[
+ {label:'トップス',items:[['tee','Tシャツ'],['long-tee','長袖Tシャツ'],['shirt','シャツ'],['blouse','ブラウス'],['polo','ポロシャツ'],['sweatshirt','スウェット・トレーナー'],['hoodie','パーカー'],['knit','ニット・セーター'],['cardigan','カーディガン'],['vest','ベスト'],['tank','タンクトップ'],['camisole','キャミソール'],['tunic','チュニック'],['jersey','ジャージトップス']]},
+ {label:'アウター',items:[['jacket','ジャケット'],['blazer','テーラードジャケット'],['denim-jacket','デニムジャケット'],['leather-jacket','レザージャケット'],['blouson','ブルゾン'],['bomber','MA-1・ボンバージャケット'],['coat','コート'],['trench','トレンチコート'],['duffle','ダッフルコート'],['pea-coat','ピーコート'],['down','ダウンジャケット'],['puffer','中綿ジャケット'],['fleece','フリース'],['windbreaker','ウィンドブレーカー'],['poncho','ポンチョ・ケープ'],['raincoat','レインコート']]},
+ {label:'ボトムス',items:[['pants','パンツ'],['jeans','デニム・ジーンズ'],['slacks','スラックス'],['chino','チノパン'],['cargo','カーゴパンツ'],['sweatpants','スウェットパンツ'],['jogger','ジョガーパンツ'],['wide-pants','ワイドパンツ'],['shorts','ショートパンツ'],['leggings','レギンス'],['skirt','スカート'],['mini-skirt','ミニスカート'],['long-skirt','ロングスカート'],['culottes','キュロット']]},
+ {label:'ワンピース・セット',items:[['dress','ワンピース'],['formal-dress','ドレス'],['jumpsuit','オールインワン'],['overalls','オーバーオール・サロペット'],['setup','セットアップ'],['suit','スーツ'],['tracksuit','ジャージ上下']]},
+ {label:'インナー・ルームウェアなど',items:[['inner','インナー'],['underwear','下着'],['bra','ブラジャー・ブラトップ'],['roomwear','ルームウェア'],['pajamas','パジャマ'],['swimwear','水着'],['sportswear','スポーツウェア'],['yoga','ヨガウェア'],['uniform','制服・ユニフォーム'],['workwear','作業着'],['kimono','着物・浴衣'],['babywear','ベビー服'],['kidswear','キッズ服']]},
+ {label:'靴・レッグウェア',items:[['sneakers','スニーカー'],['leather-shoes','革靴・ローファー'],['boots','ブーツ'],['sandals','サンダル'],['pumps','パンプス'],['slippers','スリッパ・ルームシューズ'],['socks','靴下'],['tights','タイツ・ストッキング']]},
+ {label:'バッグ・帽子',items:[['tote','バッグ'],['tote-bag','トートバッグ'],['shoulder-bag','ショルダーバッグ'],['backpack','リュック・バックパック'],['handbag','ハンドバッグ'],['waist-bag','ボディバッグ・ウエストバッグ'],['pouch','ポーチ'],['cap','キャップ'],['hat','ハット'],['beanie','ニット帽'],['beret','ベレー帽']]},
+ {label:'小物・アクセサリー',items:[['belt','ベルト'],['scarf','マフラー・ストール'],['gloves','手袋'],['tie','ネクタイ'],['wallet','財布・カードケース'],['glasses','メガネ・サングラス'],['necklace','ネックレス'],['bracelet','ブレスレット'],['ring','指輪'],['earrings','ピアス・イヤリング'],['hair-accessory','ヘアアクセサリー'],['keychain','キーホルダー'],['other','その他']]},
+];
+export const productTypes=productTypeGroups.flatMap(group=>group.items.map(([value,label])=>({value,label})));

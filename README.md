@@ -56,6 +56,6 @@ node tests/browser.mjs
 
 ## 受注生産管理
 
-左メニューの「受注生産管理」で予約受付と注文を手入力し、3つのチェックで発送までの進捗を管理します。Google版は専用の3シートを追加し、既存の財務データは変更しません。必須項目・進捗・保存方式は [受注生産管理の仕様](docs/preorder-management-plan.md) を参照してください。既存Googleアプリへの反映は `/apps-script/update.html` の更新ガイドを使用します。
+左メニューの「受注生産管理」で登録済みの受注生産商品を選んで注文を手入力し、商品ごとに3つのチェックで発送までの進捗を管理します。予約受付管理の画面は廃止しました。Google版は専用の3シートを追加し、既存の財務データは変更しません。必須項目・進捗・保存方式は [受注生産管理の仕様](docs/preorder-management-plan.md) を参照してください。既存Googleアプリへの反映は `/apps-script/update.html` の更新ガイドを使用します。
 
 `node tests/browser-preorders.mjs` は配布HTMLとGoogleサービスの代替環境を使い、登録・チェック・競合・再試行・既存データの維持を確認します。

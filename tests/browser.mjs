@@ -42,6 +42,8 @@ await page.getByRole('button',{name:'商品を登録',exact:true}).click();
 dialog=page.getByRole('dialog');
 await dialog.getByLabel('商品名',{exact:true}).fill('Test Jacket');
 await dialog.getByLabel('販売価格（円）',{exact:true}).fill('9000');
+assert.ok(await dialog.getByLabel('商品の種類',{exact:true}).locator('option').count()>=90);
+await dialog.getByLabel('商品の種類',{exact:true}).selectOption('hoodie');
 await dialog.getByRole('button',{name:'登録する',exact:true}).click();
 await page.getByRole('heading',{name:'Test Jacket',exact:true}).waitFor();
 await page.getByRole('button',{name:'費用を確定する',exact:true}).click();

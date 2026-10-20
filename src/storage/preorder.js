@@ -1,3 +1,4 @@
+import {initialData} from '../ledger.js';
 import {rpc} from './apps-script.js';
 import {validatePreorderOperation} from '../preorder.js';
 const STORAGE_KEY='anffel-preorders-v1';
@@ -7,11 +8,13 @@ export class LocalPreorderStore {
   const raw=this.storage.getItem(STORAGE_KEY);if(raw===null)return {orders:[],campaigns:[]};
   let data;try{data=JSON.parse(raw);}catch{throw new Error('受注の保存データを読み込めません。データを削除せずに確認してください。');}
   if(!Array.isArray(data?.orders)||!Array.isArray(data?.campaigns))throw new Error('受注の保存データを確認してください。');
-  for(const entity of ['campaigns','orders']){const seen=new Set();for(const item of data[entity]){if(seen.has(item.id))throw new Error('受注の保存データに重複IDがあります。');seen.add(item.id);validatePreorderOperation({entity,action:'upsert',item},data);}}
+  data.orders=data.orders.map(order=>({...order,productId:order.productId||''}));
+  for(const entity of ['campaigns','orders']){const seen=new Set();for(const item of data[entity]){if(seen.has(item.id))throw new Error('受注の保存データに重複IDがあります。');seen.add(item.id);validatePreorderOperation({entity,action:'upsert',item},data,{reading:true});}}
   return data;
  }
  async save(operation){
-  const data=await this.read(),op=validatePreorderOperation(operation,data);
+  const data=await this.read();let products=initialData().products;const raw=this.storage.getItem('atelier-ledger-v1');if(raw){try{products=JSON.parse(raw).products||[];}catch{throw new Error('商品データを確認してください。');}}
+  const op=validatePreorderOperation(operation,{...data,products});
   if(op.action==='delete')data[op.entity]=data[op.entity].filter(item=>item.id!==op.id);
   else{const index=data[op.entity].findIndex(item=>item.id===op.item.id);if(index<0)data[op.entity].push(op.item);else data[op.entity][index]=op.item;}
   this.storage.setItem(STORAGE_KEY,JSON.stringify(data));return data;
