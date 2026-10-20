@@ -3,7 +3,9 @@ export async function rpc(name,arg){
  return new Promise((resolve,reject)=>{
   const bridge=globalThis.google?.script?.run;
   if(!bridge){reject(new Error('Googleの専用URLからANFFELを開いてください。'));return;}
-  bridge.withSuccessHandler(resolve).withFailureHandler(error=>reject(new Error(error?.message||'Googleへの保存に失敗しました。もう一度お試しください。'))).anffelRpc({name,arg,token:globalThis.ANFFEL_ACCESS_TOKEN||''});
+  const payload={name,token:globalThis.ANFFEL_ACCESS_TOKEN||''};
+  if(arg!==undefined)payload.arg=JSON.parse(JSON.stringify(arg));
+  bridge.withSuccessHandler(resolve).withFailureHandler(error=>reject(new Error(error?.message||'Googleへの保存に失敗しました。もう一度お試しください。'))).anffelRpc(payload);
  });
 }
 export class AppsScriptLedgerStore {

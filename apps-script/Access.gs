@@ -2,7 +2,7 @@
 var ANFFEL_RPC_TOKEN_='';
 function anffelAccessConfig_(props){
  var password=props.getProperty('ANFFEL_ACCESS_PASSWORD'),recovery=props.getProperty('ANFFEL_RECOVERY_CODE');
- if(!password||password.length<16||!recovery||recovery.length<16||password===recovery)return null;
+ if(!password||password.length<16||password.length>1024||!recovery||recovery.length<16||recovery.length>1024||password===recovery)return null;
  return {password:password,recovery:recovery};
 }
 function anffelAccessState_(props){
