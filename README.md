@@ -52,7 +52,7 @@ node tests/browser.mjs
 
 ## パスワード入口（Vercel）
 
-本番ルートはANFFELへのパスワード入口です。設定・保護範囲は [入口のセキュリティ設定](docs/entrance-security.md) を参照してください。旧ブラウザー保存版は `/legacy` に残し、Apps Script版と独立しています。開発時の入口画面は `/entrance/index.html`、サーバーAPIはVercel Node関数です。
+本番ルートは本人専用のGoogle版ANFFELへの入口です。設定・保護範囲は [入口のセキュリティ設定](docs/entrance-security.md) を参照してください。旧ブラウザー保存版は `/legacy` に残し、Apps Script版と独立しています。開発時の入口画面は `/entrance/index.html`、入口はGoogle側へ転送し、認証・全体ロック・解除コードはGoogle Apps Scriptで処理します。Google側のスクリプトプロパティに通常パスワードと別の解除コードの設定が必要です。
 
 ## 受注生産管理
 

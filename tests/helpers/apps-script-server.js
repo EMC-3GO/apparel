@@ -1,9 +1,10 @@
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
-export function server(){
+export function server({authenticate=true,configured=true}={}){
  const props=new Map(),books=new Map();let activeUser='owner@example.test',failComplete=null,lockHeld=false,blocked=false;
- const rawWrites=[];
+ const rawWrites=[],cache=new Map();let testNow=Date.now();
+ class ClockDate extends Date{constructor(...args){super(...(args.length?args:[testNow]));}static now(){return testNow;}}
  class Range{
   constructor(sheet,row,col,height,width){Object.assign(this,{sheet,row,col,height,width});}
   getValues(){return Array.from({length:this.height},(_,r)=>Array.from({length:this.width},(_,c)=>this.sheet.rows[this.row+r-1]?.[this.col+c-1]??''));}
@@ -27,17 +28,21 @@ export function server(){
  }
  const ledger=new Book('ledger');
  const context={
-  console:{log(){}},
+  console:{log(){}},Date:ClockDate,
+  CacheService:{getScriptCache:()=>({get:key=>{const entry=cache.get(key);return entry&&entry.until>testNow?entry.value:null;},put:(key,value,seconds)=>cache.set(key,{value,until:testNow+seconds*1000}),remove:key=>cache.delete(key)})},
   PropertiesService:{getScriptProperties:()=>({getProperty:k=>props.get(k)??null,setProperty:(k,v)=>props.set(k,v),setProperties:obj=>Object.entries(obj).forEach(([k,v])=>props.set(k,v))})},
   Session:{getEffectiveUser:()=>({getEmail:()=> 'owner@example.test'}),getActiveUser:()=>({getEmail:()=>activeUser})},
   LockService:{getScriptLock:()=>({tryLock:()=>{if(blocked||lockHeld)return false;lockHeld=true;return true;},releaseLock:()=>{lockHeld=false;}})},
   SpreadsheetApp:{getActiveSpreadsheet:()=>ledger,openById:id=>{if(!books.has(id))throw new Error('not found');return books.get(id);},flush(){},create:title=>{const b=new Book('report'+books.size);b.title=title;b.insertSheet('Sheet1');return b;}},
-  Utilities:{DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(_,text)=>[...crypto.createHash('sha256').update(text).digest()],base64EncodeWebSafe:bytes=>Buffer.from(bytes).toString('base64url'),base64Encode:bytes=>Buffer.from(bytes).toString('base64'),formatDate:()=> '2026/10/18 12:00'},
+  Utilities:{getUuid:()=>crypto.randomUUID(),computeHmacSha256Signature:(value,key)=>[...crypto.createHmac('sha256',key).update(value).digest()],DigestAlgorithm:{SHA_256:'sha256'},computeDigest:(_,text)=>[...crypto.createHash('sha256').update(text).digest()],base64EncodeWebSafe:bytes=>Buffer.from(bytes).toString('base64url'),base64Encode:bytes=>Buffer.from(bytes).toString('base64'),formatDate:()=> '2026/10/18 12:00'},
   DriveApp:{getFileById:id=>{if(!books.has(id))throw new Error('missing');return {isTrashed:()=>false,getAs:()=>({getContentType:()=> 'application/pdf',getBytes:()=> [...Buffer.from('%PDF-1.7\nmock\n')]})};}},
   MimeType:{PDF:'application/pdf'},
  };
  vm.createContext(context);vm.runInContext(readFileSync(new URL('../../public/apps-script/Code.gs',import.meta.url),'utf8'),context);
- const call=(name,arg)=>JSON.parse(JSON.stringify(context[name](arg)));
  context.setupAnffel();
- return {call,context,ledger,books,props,rawWrites,setUser:v=>{activeUser=v;},failCompletion:(sheet='変更履歴')=>{failComplete=sheet;},block:()=>{blocked=true;},isLocked:()=>lockHeld};
+ if(configured){props.set('ANFFEL_ACCESS_PASSWORD','test-only-password-123!');props.set('ANFFEL_RECOVERY_CODE','test-only-recovery-code-456!');}
+ const token=authenticate&&configured?context.authenticateAccess({password:'test-only-password-123!'}).token:'';
+ const business=['getLedger','initializeLedger','saveLedgerOperation','createIncomeReport','downloadIncomeReport','getPreorders','savePreorderOperation'];
+ const call=(name,arg)=>JSON.parse(JSON.stringify(business.includes(name)?context.anffelRpc({name,arg,token}):context[name](arg)));
+ return {call,context,ledger,books,props,rawWrites,token,cache,advanceTime:ms=>{testNow+=ms;},restart:()=>vm.runInContext(readFileSync(new URL('../../public/apps-script/Code.gs',import.meta.url),'utf8'),context),setUser:v=>{activeUser=v;},failCompletion:(sheet='変更履歴')=>{failComplete=sheet;},block:()=>{blocked=true;},isLocked:()=>lockHeld};
 }

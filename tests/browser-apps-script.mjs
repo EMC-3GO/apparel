@@ -10,15 +10,15 @@ try{
  let rejectDelete=false;
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- await page.exposeFunction('__appsScriptInvoke',(name,arg)=>{if(rejectDelete&&name==='saveLedgerOperation'&&arg.action==='delete'){rejectDelete=false;throw new Error('削除の通信テスト');}return backend.call(name,arg);});
- await page.addInitScript(()=>{
+ await page.exposeFunction('__appsScriptInvoke',(name,arg)=>{if(rejectDelete&&(name==='anffelRpc'?arg.name:name)==='saveLedgerOperation'&&(name==='anffelRpc'?arg.arg:arg).action==='delete'){rejectDelete=false;throw new Error('削除の通信テスト');}return backend.call(name,arg);});
+ await page.addInitScript(token=>{globalThis.ANFFEL_ACCESS_TOKEN=token;
   const runner=(success,fail)=>new Proxy({}, {get:(_,name)=>{
    if(name==='withSuccessHandler')return callback=>runner(callback,fail);
    if(name==='withFailureHandler')return callback=>runner(success,callback);
    return arg=>globalThis.__appsScriptInvoke(name,arg).then(success).catch(error=>fail({message:error.message}));
   }});
   globalThis.google={script:{run:runner(()=>{},()=>{})}};
- });
+ },backend.token);
  await page.route('https://anffel-apps-script.test/**',route=>route.fulfill({status:200,contentType:'text/html',body:html}));
  await page.goto('https://anffel-apps-script.test/');
  await page.getByRole('heading',{name:'これまでのデータを引き継ぐ',exact:true}).waitFor();

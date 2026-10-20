@@ -41,11 +41,11 @@ function anffelPreorderRecover_(ss){
   anffelPreorderApply_(ss,JSON.parse(row[6]),row[0]);SpreadsheetApp.flush();anffelWrite_(tables.log.getRange(index+2,3,1,1),[['保存済み']]);SpreadsheetApp.flush();
  });
 }
-function getPreorders(){return anffelLocked_(function(ss,props){
+function getPreorders_(){return anffelLocked_(function(ss,props){
  if(props.getProperty('ANFFEL_INITIALIZED')!=='true')throw new Error('先に既存の保存先の準備を完了してください。');
  anffelPreorderRecover_(ss);return anffelPreorderState_(ss);
 });}
-function savePreorderOperation(request){return anffelLocked_(function(ss,props){
+function savePreorderOperation_(request){return anffelLocked_(function(ss,props){
  if(props.getProperty('ANFFEL_INITIALIZED')!=='true')throw new Error('先に既存の保存先の準備を完了してください。');
  if(!request||typeof request.eventId!=='string'||!request.eventId||request.eventId.length>150)throw new Error('受注の保存内容を確認してください。');
  anffelPreorderRecover_(ss);var tables=anffelPreorderTables_(ss),logs=anffelRows_(tables.log,7);

@@ -9,7 +9,7 @@ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];page.setDefaultTimeout(7000);page.on('pageerror',e=>errors.push(e.message));
  await page.exposeFunction('__appsScriptInvoke',(name,arg)=>backend.call(name,arg));
- await page.addInitScript(()=>{const runner=(success,fail)=>new Proxy({}, {get:(_,name)=>name==='withSuccessHandler'?callback=>runner(callback,fail):name==='withFailureHandler'?callback=>runner(success,callback):arg=>globalThis.__appsScriptInvoke(name,arg).then(success).catch(error=>fail({message:error.message}))});globalThis.google={script:{run:runner(()=>{},()=>{})}};});
+ await page.addInitScript(token=>{globalThis.ANFFEL_ACCESS_TOKEN=token;const runner=(success,fail)=>new Proxy({}, {get:(_,name)=>name==='withSuccessHandler'?callback=>runner(callback,fail):name==='withFailureHandler'?callback=>runner(success,callback):arg=>globalThis.__appsScriptInvoke(name,arg).then(success).catch(error=>fail({message:error.message}))});globalThis.google={script:{run:runner(()=>{},()=>{})}};},backend.token);
  await page.route('https://anffel-preorders.test/**',route=>route.fulfill({status:200,contentType:'text/html',body:html}));
  await page.goto('https://anffel-preorders.test/');await page.getByRole('link',{name:'保存先のスプレッドシートを開く'}).waitFor();
  assert.equal(await page.locator('.metrics .metric-value').first().textContent(),'￥6,000');

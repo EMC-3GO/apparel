@@ -11,7 +11,7 @@ function setupAnffel(){
  var ss=SpreadsheetApp.getActiveSpreadsheet();
  if(!ss)throw new Error('専用スプレッドシートの「拡張機能 → Apps Script」からsetupAnffelを実行してください。');
  var props=PropertiesService.getScriptProperties(),owner=Session.getEffectiveUser().getEmail();
- if(!owner)throw new Error('Googleアカウントでログインしてください。');
+ if(!owner||Session.getActiveUser().getEmail()!==owner)throw new Error('Googleアカウント本人で設定してください。');
  if(props.getProperty('ANFFEL_OWNER')&&props.getProperty('ANFFEL_OWNER')!==owner)throw new Error('この設定は作成者本人のみ実行できます。');
  if(props.getProperty('ANFFEL_SHEET_ID')&&props.getProperty('ANFFEL_SHEET_ID')!==ss.getId())throw new Error('このスクリプトは別のシートに設定済みです。上書きは行いません。');
  props.setProperties({ANFFEL_OWNER:owner,ANFFEL_SHEET_ID:ss.getId()});
@@ -31,7 +31,7 @@ function anffelOwner_(){
 function anffelLocked_(fn){
  var props=anffelOwner_(),lock=LockService.getScriptLock();
  if(!lock.tryLock(20000))throw new Error('ほかの保存処理を実行中です。少し待ってからお試しください。');
- try{return fn(SpreadsheetApp.openById(props.getProperty('ANFFEL_SHEET_ID')),props);}finally{lock.releaseLock();}
+ try{anffelRequireAccess_(ANFFEL_RPC_TOKEN_,props);return fn(SpreadsheetApp.openById(props.getProperty('ANFFEL_SHEET_ID')),props);}finally{lock.releaseLock();}
 }
 function doGet(){anffelOwner_();return HtmlService.createHtmlOutput(ANFFEL_HTML).setTitle('ANFFEL — ブランドの収支管理').addMetaTag('viewport','width=device-width, initial-scale=1.0');}
 function anffelLiteral_(value){return typeof value==='string'?"'"+value:value===undefined?'':value;}
@@ -71,8 +71,8 @@ function anffelRecover_(ss){
   var operation=JSON.parse(row[6]);anffelApply_(ss,operation,row[0]);SpreadsheetApp.flush();anffelWrite_(tables.log.getRange(index+2,3,1,1),[['保存済み']]);SpreadsheetApp.flush();
  });
 }
-function getLedger(){return anffelLocked_(function(ss,props){anffelRecover_(ss);return anffelState_(ss,props);});}
-function initializeLedger(request){return anffelLocked_(function(ss,props){
+function getLedger_(){return anffelLocked_(function(ss,props){anffelRecover_(ss);return anffelState_(ss,props);});}
+function initializeLedger_(request){return anffelLocked_(function(ss,props){
  if(props.getProperty('ANFFEL_INITIALIZED')==='true')return anffelState_(ss,props);
  var data=request&&request.data||{products:[],records:[]};
  if(!Array.isArray(data.products)||!Array.isArray(data.records))throw new Error('引き継ぎファイルの形式を確認してください。');
@@ -84,7 +84,7 @@ function initializeLedger(request){return anffelLocked_(function(ss,props){
  ['products','records'].forEach(function(entity){var sheet=tables[entity],columns=entity==='products'?9:12,rows=data[entity].map(function(item){return anffelRow_({entity:entity,item:item},'migration-'+entity+'-'+item.id);});if(sheet.getLastRow()>1)sheet.getRange(2,1,sheet.getLastRow()-1,columns).clearContent();for(var i=0;i<rows.length;i+=300)anffelWrite_(sheet.getRange(i+2,1,Math.min(300,rows.length-i),columns),rows.slice(i,i+300));});
  SpreadsheetApp.flush();props.setProperty('ANFFEL_INITIALIZED','true');return anffelState_(ss,props);
  });}
-function saveLedgerOperation(request){return anffelLocked_(function(ss,props){
+function saveLedgerOperation_(request){return anffelLocked_(function(ss,props){
  if(props.getProperty('ANFFEL_INITIALIZED')!=='true')throw new Error('先にデータの引き継ぎまたは新規開始を完了してください。');
  if(!request||typeof request.eventId!=='string'||!request.eventId||request.eventId.length>150)throw new Error('保存内容を確認してください。');
  anffelRecover_(ss);var tables=anffelTables_(ss),logs=anffelRows_(tables.log,7);
@@ -99,7 +99,7 @@ function saveLedgerOperation(request){return anffelLocked_(function(ss,props){
  anffelApply_(ss,operation,request.eventId);SpreadsheetApp.flush();anffelWrite_(tables.log.getRange(row,3,1,1),[['保存済み']]);SpreadsheetApp.flush();
  return anffelState_(ss,props);
  });}
-function createIncomeReport(options){return anffelLocked_(function(ss,props){
+function createIncomeReport_(options){return anffelLocked_(function(ss,props){
  if(props.getProperty('ANFFEL_INITIALIZED')!=='true')throw new Error('先に保存先の準備を完了してください。');
  anffelRecover_(ss);var state=anffelState_(ss,props),report=AnffelCore.buildIncomeReport(state.data,{range:options&&options.range||'all',month:options&&options.month||'',generatedAt:Utilities.formatDate(new Date(),'Asia/Tokyo','yyyy/MM/dd HH:mm')});
  var key=Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify([options,state.versions]))),cached=props.getProperty('ANFFEL_LAST_REPORT');
@@ -117,11 +117,11 @@ function createIncomeReport(options){return anffelLocked_(function(ss,props){
  sheet.getRange(1,1,1,6).setFontSize(16).setFontWeight('bold');sheet.autoResizeRows(1,rows.length);report.merges.forEach(function(i){sheet.setRowHeight(i+1,Math.max(24,Math.ceil(String(report.rows[i][0]).length/60)*16));});sheet.setRowHeight(1,32);SpreadsheetApp.flush();
  var result={id:book.getId(),url:book.getUrl(),fileName:report.fileName,ready:true,key:key};props.setProperty('ANFFEL_LAST_REPORT',JSON.stringify(result));return result;
  });}
-function downloadIncomeReport(request){
- var props=anffelOwner_(),id=request&&request.id;
+function downloadIncomeReport_(request){return anffelLocked_(function(ss,props){
+ var id=request&&request.id;
  if(typeof id!=='string'||props.getProperty('ANFFEL_REPORT_'+id)!=='true')throw new Error('ANFFELで作成した報告書を選択してください。');
  var blob;
  try{blob=DriveApp.getFileById(id).getAs(MimeType.PDF);}catch(error){throw new Error('報告書のシートは作成済みですが、PDFの取得に失敗しました。少し待って「PDFを再取得」を押してください。');}
  if(blob.getContentType()!=='application/pdf')throw new Error('PDFの取得結果を確認できませんでした。報告書のシートは保存されています。');
  return {base64:Utilities.base64Encode(blob.getBytes()),mimeType:'application/pdf'};
-}
+});}

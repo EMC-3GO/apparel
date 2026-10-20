@@ -15,9 +15,11 @@ const stylesheet=(await readFile(resolve(root,'dist/assets',css),'utf8')).replac
 const html=`<!doctype html><html lang="ja"><head><base target="_top"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ANFFEL — ブランドの収支管理</title><style>${stylesheet}</style></head><body><div id="root"></div><script type="module">${script}</script></body></html>`;
 const core=await build({stdin:{contents:"export {buildIncomeReport} from './src/report.js'; export {validateOperation} from './src/ledger-data.js';",resolveDir:root},bundle:true,write:false,format:'iife',globalName:'AnffelCore',platform:'neutral',target:'es2019'});
 const preorderCore=await build({stdin:{contents:"export {orderFields,campaignFields,preorderStatuses,preorderStatus,validatePreorderOperation} from './src/preorder.js';",resolveDir:root},bundle:true,write:false,format:'iife',globalName:'AnffelPreorders',platform:'neutral',target:'es2019'});
+const accessCore=await build({stdin:{contents:"export {emptyAccessLock,validAccessLock,advanceAccessLock} from './server/access-lock.js';",resolveDir:root},bundle:true,write:false,format:'iife',globalName:'AnffelAccess',platform:'neutral',target:'es2019'});
+const accessServer=await readFile(resolve(root,'apps-script/Access.gs'),'utf8');
 const preorderServer=await readFile(resolve(root,'apps-script/Preorders.gs'),'utf8');
 const server=await readFile(resolve(root,'apps-script/Code.gs'),'utf8');
-const combined=server+'\n'+preorderServer+'\n'+preorderCore.outputFiles[0].text+'\n'+core.outputFiles[0].text+'\nvar ANFFEL_HTML = '+JSON.stringify(html)+';\n';
+const combined=server+'\n'+accessServer+'\n'+accessCore.outputFiles[0].text+'\n'+preorderServer+'\n'+preorderCore.outputFiles[0].text+'\n'+core.outputFiles[0].text+'\nvar ANFFEL_HTML = '+JSON.stringify(html)+';\n';
 await writeFile(resolve(out,'Code.gs'),combined);
 await writeFile(resolve(out,'ANFFEL.html'),html);
 await mkdir(resolve(root,'dist/apps-script'),{recursive:true});
