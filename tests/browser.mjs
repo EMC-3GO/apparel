@@ -62,14 +62,14 @@ dialog=page.getByRole('dialog');
 await dialog.getByRole('button',{name:'支出',exact:true}).click();
 const targetProduct=dialog.getByLabel('対象商品',{exact:true});
 await targetProduct.selectOption('p2');
-for (const category of ['発送送料','販売手数料','人件費','広告宣伝費','その他経費']) {
+for (const category of ['タグ・資材','発送送料','販売手数料','人件費','広告宣伝費','その他経費']) {
  await dialog.getByLabel('項目',{exact:true}).selectOption(category);
  assert.equal(await targetProduct.isDisabled(),true);
  assert.equal(await targetProduct.inputValue(),'');
  assert.equal(await targetProduct.locator('option').count(),1);
  assert.equal(await targetProduct.locator('option').textContent(),'共通の支出');
 }
-for (const category of ['製造費','サンプル代','タグ・資材']) {
+for (const category of ['製造費','サンプル代']) {
  await dialog.getByLabel('項目',{exact:true}).selectOption(category);
  assert.equal(await targetProduct.isEnabled(),true);
  assert.equal(await targetProduct.inputValue(),'');

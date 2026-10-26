@@ -1,6 +1,6 @@
 export const yen = n => new Intl.NumberFormat('ja-JP', {style:'currency', currency:'JPY', maximumFractionDigits:0}).format(n);
 export const categories = {income:['商品売上','受取送料','その他収入'], expense:['製造費','サンプル代','タグ・資材','発送送料','販売手数料','人件費','広告宣伝費','その他経費'], refund:['返品・キャンセル']};
-const productExpenseCategories = ['製造費','サンプル代','タグ・資材'];
+const productExpenseCategories = ['製造費','サンプル代'];
 export const isSharedExpense = record => record.type === 'expense' && !productExpenseCategories.includes(record.category);
 export const normalizeRecordProduct = record => isSharedExpense(record) ? {...record, productId:''} : record;
 export function amountOf(r, products) {

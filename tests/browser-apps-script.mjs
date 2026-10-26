@@ -30,7 +30,7 @@ try{
  await page.getByRole('button',{name:'edit',exact:true}).click();
  const dialog=page.getByRole('dialog');
  await dialog.getByRole('button',{name:'支出',exact:true}).click();
- await dialog.getByLabel('項目',{exact:true}).selectOption('広告宣伝費');
+ await dialog.getByLabel('項目',{exact:true}).selectOption('タグ・資材');
  assert.equal(await dialog.getByLabel('対象商品',{exact:true}).isDisabled(),true);
  await dialog.getByLabel('タイトル',{exact:true}).fill('Google保存の検証');
  await dialog.getByLabel('金額（円）',{exact:true}).fill('2000');
@@ -42,6 +42,7 @@ try{
  await dialog.getByRole('button',{name:'登録する',exact:true}).click();
  await dialog.waitFor({state:'hidden'});
  assert.equal(backend.call('getLedger').data.records.filter(r=>r.title==='Google保存の検証').length,1);
+ assert.equal(backend.ledger.getSheetByName('収支記録').rows.find(row=>row[4]==='Google保存の検証')[5],'');
  await page.reload();
  await page.getByRole('link',{name:'保存先のスプレッドシートを開く',exact:true}).waitFor();
  await page.getByRole('button',{name:'月別',exact:true}).click();

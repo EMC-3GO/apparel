@@ -18,8 +18,11 @@ test('spreadsheet writes persist across client instances; deletion and shared cl
  let counter=0;const call=async(name,arg)=>s.call(name,arg),uuid=()=> 'event-'+(++counter),a=new AppsScriptLedgerStore({call,uuid});
  await a.connect();await a.save({entity:'records',action:'upsert',item:record});
  const b=new AppsScriptLedgerStore({call,uuid});assert.equal((await b.connect()).data.records.length,1);
- await b.save({entity:'records',action:'upsert',item:{...record,type:'expense',category:'人件費',amount:1000}});
- assert.equal((await a.read()).records[0].productId,'');
+ for(const category of ['人件費','タグ・資材']){
+  await b.save({entity:'records',action:'upsert',item:{...record,type:'expense',category,amount:1000}});
+  assert.equal((await a.read()).records[0].productId,'');
+  assert.equal(s.ledger.getSheetByName('収支記録').rows[1][5],'');
+ }
  await a.save({entity:'records',action:'delete',id:'r'});assert.equal((await b.read()).records.length,0);
 });
 test('lost acknowledgement is recovered and retried without a duplicate record or operation',()=>{

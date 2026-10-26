@@ -1,4 +1,4 @@
-import {categories,normalizeRecordProduct} from './ledger.js';
+import {categories,normalizeRecordProduct,isSharedExpense} from './ledger.js';
 function validDate(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;}
 export function validateOperation(operation,state,{migrating=false}={}){
  if(!['products','records'].includes(operation.entity)||!['upsert','delete'].includes(operation.action))throw new Error('保存する内容を確認してください。');
@@ -16,7 +16,7 @@ export function validateOperation(operation,state,{migrating=false}={}){
   if(!migrating)Object.assign(item,normalizeRecordProduct(item));
   const product=state.products.find(p=>p.id===item.productId);
   const sale=item.category==='商品売上'||item.type==='refund';
-  const productRequired=sale||(item.type==='expense'&&['製造費','サンプル代','タグ・資材'].includes(item.category));
+  const productRequired=sale||(item.type==='expense'&&!isSharedExpense(item));
   if((productRequired&&!product)||(item.productId&&!product))throw new Error('対象商品を選択してください。');
   if(sale){
    const unitPrice=item.unitPrice??product.price;
