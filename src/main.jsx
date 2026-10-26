@@ -5,6 +5,7 @@ import {yen,categories,amountOf,summarize,initialData,isSharedExpense,normalizeR
 import {LocalLedgerStore,legacyData} from './storage/local.js';
 import {AppsScriptLedgerStore,parseTransferFile,transferContents} from './storage/apps-script.js';
 import './style.css';
+import {trendScale,trendTickLabel} from './trend-scale.js';
 import {productTypeGroups,productTypes} from './product-types.js';
 import GoogleEntrance,{accessRpc,forgetGoogleSession} from './GoogleEntrance.jsx';
 import PreorderManager from './PreorderManager.jsx';
@@ -110,9 +111,25 @@ function Trend({records,products,range,month}){
  const monthLabels=Array.from({length:Math.min(12,count)},(_,i)=>{const d=new Date(last.getFullYear(),last.getMonth()-Math.min(12,count)+1+i,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;});
  let labels=range==='all'?monthLabels:Array.from({length:4},(_,i)=>i);
  const points=labels.map((key,i)=>{const rs=records.filter(r=>range==='all'?r.date.startsWith(key):Math.min(3,Math.floor((Number(r.date.slice(8))-1)/8))===i);const s=summarize(rs,products);return {label:range==='all'?`${Number(key.slice(5))}月`:`${i*8+1}–${i===3?new Date(Number(month.slice(0,4)),Number(month.slice(5)),0).getDate():(i+1)*8}日`,...s};});
- const max=Math.max(...points.map(p=>Math.max(p.income,p.spending)),10000)*1.2;const x=i=>60+i*510/Math.max(1,points.length-1),y=v=>205-v/max*168;
+ const scale=trendScale(points.flatMap(p=>[p.income,p.spending,p.profit]));
+ const left=88,right=584,x=i=>points.length===1?(left+right)/2:left+i*(right-left)/(points.length-1),y=scale.y;
  const path=field=>points.map((p,i)=>`${i?'L':'M'}${x(i)},${y(p[field])}`).join(' ');
- return <section className="panel trend"><div className="section-top"><div><h2>収支の推移</h2><p>{range==='all'?'月ごとの収入と支出（直近12か月まで）':'月内の収入と支出のバランス'}</p></div><div className="legend"><span><i/>収入</span><span><i/>支出</span></div></div><div className="chart-wrap"><svg viewBox="0 0 610 245" role="img" aria-label="収入と支出の推移グラフ"><defs><linearGradient id="chartFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#222222" stopOpacity=".14"/><stop offset="100%" stopColor="#222222" stopOpacity="0"/></linearGradient></defs>{[0,1,2,3].map(i=><g key={i}><line x1="60" x2="580" y1={37+i*56} y2={37+i*56} stroke="#e5e5e5" strokeDasharray="3 5"/><text x="0" y={41+i*56} fill="#666666" fontSize="11">{Math.round(max*(3-i)/3/10000)}万円</text></g>)}<path d={`${path('income')} L570,205 L60,205Z`} fill="url(#chartFill)"/><path d={path('income')} fill="none" stroke="#222222" strokeWidth="2.8" strokeLinejoin="round"/><path d={path('spending')} fill="none" stroke="#777777" strokeWidth="2.4" strokeDasharray="5 5" strokeLinejoin="round"/>{points.map((p,i)=><g key={i} tabIndex="0" onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} onFocus={()=>setHover(i)} onBlur={()=>setHover(null)} aria-label={`${p.label} 収入${yen(p.income)} 支出${yen(p.spending)}`}><rect x={x(i)-30} y="25" width="60" height="195" fill="transparent"/><circle cx={x(i)} cy={y(p.income)} r={hover===i?5:3.7} fill="#222222" stroke="white" strokeWidth="2"/><text x={x(i)} y="235" textAnchor="middle" fill="#666666" fontSize="11">{p.label}</text></g>)}</svg>{hover!==null&&<div className="chart-tooltip"><strong>{points[hover].label}</strong><span>収入 {yen(points[hover].income)}</span><span>支出 {yen(points[hover].spending)}</span></div>}</div></section>
+ const hitHalf=points.length>1?Math.min(30,(right-left)/(points.length-1)/2):0;
+ const hitStart=i=>points.length===1?left:Math.max(left,x(i)-hitHalf);
+ const hitEnd=i=>points.length===1?right:Math.min(right,x(i)+hitHalf);
+ const activePoint=points[hover];
+ useEffect(()=>setHover(null),[range,month,records,products]);
+ const series=[{key:'income',label:'収入',stroke:'#222222',width:2.4},{key:'spending',label:'支出',stroke:'#777777',width:2.2,dash:'6 5'},{key:'profit',label:'収支差額',stroke:'#222222',width:2.8,dash:'2 4'}];
+ return <section className="panel trend"><div className="section-top"><div><h2>収支の推移</h2><p>{range==='all'?'月ごとの収入・支出・収支差額（直近12か月まで）':'月内の収入・支出・収支差額'}</p></div><div className="legend">{series.map(s=><span key={s.key}><i className={s.key}/>{s.label}</span>)}</div></div><div className="chart-wrap"><svg viewBox="0 0 610 252" role="img" aria-label="収入・支出・収支差額の推移グラフ。赤字は0円より下に表示します。">
+ {scale.ticks.map(tick=><g key={tick}><line className={tick===0?'chart-zero-line':undefined} x1={left} x2={right} y1={y(tick)} y2={y(tick)} stroke={tick===0?'#888888':'#e5e5e5'} strokeWidth={tick===0?1.2:1} strokeDasharray={tick===0?undefined:'3 5'}/><text className="chart-axis-label" x={left-12} y={y(tick)+4} textAnchor="end" fill="#666666" fontSize="11">{trendTickLabel(tick)}</text></g>)}
+ <path d={`${path('profit')} L${x(points.length-1)},${y(0)} L${x(0)},${y(0)}Z`} fill="#222222" fillOpacity=".06"/>
+ {series.map(s=><path key={s.key} data-series={s.key} d={path(s.key)} fill="none" stroke={s.stroke} strokeWidth={s.width} strokeDasharray={s.dash} strokeLinejoin="round"/>)}
+ {points.map((p,i)=><g key={i} tabIndex="0" role="button" onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} onFocus={()=>setHover(i)} onBlur={()=>setHover(null)} onClick={()=>setHover(i)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setHover(i);}if(e.key==='Escape')setHover(null);}} aria-label={`${p.label} 収入${yen(p.income)} 支出${yen(p.spending)} 収支差額${yen(p.profit)}`}>
+ <rect x={hitStart(i)} y="20" width={hitEnd(i)-hitStart(i)} height="200" fill="transparent"/>
+ {series.map(s=><circle key={s.key} data-series={s.key} cx={x(i)} cy={y(p[s.key])} r={hover===i?4.5:3} fill={s.key==='spending'?'white':s.stroke} stroke={s.key==='spending'?s.stroke:'white'} strokeWidth="1.5"/>)}
+ <text x={x(i)} y="241" textAnchor="middle" fill="#666666" fontSize="11">{p.label}</text></g>)}</svg>
+ {activePoint&&<div className="chart-tooltip"><strong>{activePoint.label}</strong><span>収入 {yen(activePoint.income)}</span><span>支出 {yen(activePoint.spending)}</span><span>収支差額 {yen(activePoint.profit)}</span></div>}</div><p className="chart-note">収支差額は収入 − 支出です。マイナスは0円より下に表示します。</p></section>;
+
 }
 function ProductCard({product:p,records,products,onClick}){const s=summarize(records.filter(r=>r.productId===p.id),products);const pending=p.mode==='order'&&!p.confirmed;return <button className="product-card" onClick={onClick}><div className="product-card-top"><span className="product-icon"><Shirt size={24}/></span><span className="mode-tag">{p.mode==='order'?'受注生産':'在庫販売'}</span><ChevronRight size={18}/></div><div className="product-body"><h3>{p.name}</h3><p>1点 {yen(p.price)}</p><div className="product-numbers"><div><span>売上</span><strong>{yen(s.sales)}</strong></div><div><span>支出</span><strong>{yen(s.spending)}</strong></div><div><span>利益</span><strong>{pending?'未確定':yen(s.profit)}</strong></div></div><div className="product-foot">{pending?'費用確定後に利益を表示します。':'登録した収入・支出から計算しています。'}</div></div></button>}
 function Editor({modal,products,records,googleMode,onClose,onSave,onDelete}){
