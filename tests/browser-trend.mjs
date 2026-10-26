@@ -26,5 +26,11 @@ try{
  assert.ok(Number(await chart.locator('circle[data-series=profit]').first().getAttribute('cy'))>Number(await zero()));
  await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:'/tmp/anffel-negative-trend-mobile.png',fullPage:true});
  await page.getByLabel('集計月',{exact:true}).fill('2027-01');const labels=await chart.locator('.chart-axis-label').allTextContents();assert.equal(new Set(labels).size,labels.length);assert.ok(labels.includes('0円'));assert.ok(labels.some(text=>text.startsWith('−')));assert.equal(await chart.locator('path[d*="NaN"]').count(),0);
- assert.deepEqual(errors,[]);console.log('Trend browser passed: monthly/cumulative loss below zero, negative refund income, signed tooltip, empty ticks and mobile layout');
+ for(const id of ['e1','i','e2']){const state=backend.call('getLedger');backend.call('saveLedgerOperation',{entity:'records',action:'delete',id,eventId:'single-month-'+id,expectedVersion:state.versions.records[id]});}
+ await page.reload();await page.getByRole('link',{name:'保存先のスプレッドシートを開く'}).waitFor();
+ assert.equal(await chart.locator('circle[data-series=profit]').count(),1);
+ assert.equal(await chart.locator('circle[data-series=profit]').getAttribute('cx'),await chart.locator('.chart-zero-line').getAttribute('x1'));
+ assert.ok(Number(await chart.locator('circle[data-series=profit]').getAttribute('cy'))>Number(await zero()));
+ await chart.getByRole('button',{name:/^10月 収入/}).focus();await chart.locator('.chart-tooltip').getByText('収支差額 '+yen(-3000),{exact:true}).waitFor();
+ assert.deepEqual(errors,[]);console.log('Trend browser passed: monthly/cumulative loss below zero, negative refund income, signed tooltip, empty ticks, mobile layout and a single month starting at the left edge');
 }finally{await browser.close();}

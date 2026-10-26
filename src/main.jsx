@@ -112,7 +112,7 @@ function Trend({records,products,range,month}){
  let labels=range==='all'?monthLabels:Array.from({length:4},(_,i)=>i);
  const points=labels.map((key,i)=>{const rs=records.filter(r=>range==='all'?r.date.startsWith(key):Math.min(3,Math.floor((Number(r.date.slice(8))-1)/8))===i);const s=summarize(rs,products);return {label:range==='all'?`${Number(key.slice(5))}月`:`${i*8+1}–${i===3?new Date(Number(month.slice(0,4)),Number(month.slice(5)),0).getDate():(i+1)*8}日`,...s};});
  const scale=trendScale(points.flatMap(p=>[p.income,p.spending,p.profit]));
- const left=88,right=584,x=i=>points.length===1?(left+right)/2:left+i*(right-left)/(points.length-1),y=scale.y;
+ const left=88,right=584,x=i=>points.length===1?left:left+i*(right-left)/(points.length-1),y=scale.y;
  const path=field=>points.map((p,i)=>`${i?'L':'M'}${x(i)},${y(p[field])}`).join(' ');
  const hitHalf=points.length>1?Math.min(30,(right-left)/(points.length-1)/2):0;
  const hitStart=i=>points.length===1?left:Math.max(left,x(i)-hitHalf);
