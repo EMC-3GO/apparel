@@ -1,4 +1,4 @@
-// Shared scale for income, spending and the signed balance (income - spending).
+// Shared scale for income and spending, including negative net income after refunds.
 export function trendScale(values){
  const finite=values.filter(Number.isFinite);
  let min=Math.min(0,...finite),max=Math.max(0,...finite);
