@@ -8,8 +8,8 @@ export function legacyData(storage=globalThis.localStorage){
  throw new Error('このブラウザの保存データを読み込めませんでした。データを削除せず、内容を確認してください。');
 }
 export class LocalLedgerStore {
- constructor(storage=globalThis.localStorage){this.storage=storage;}
- async read(){return legacyData(this.storage)||initialData();}
+ constructor(storage=globalThis.localStorage,{seed=initialData}={}){this.storage=storage;this.seed=seed;}
+ async read(){return legacyData(this.storage)||this.seed();}
  async save(operation){
   const data=await this.read();operation=validateOperation(operation,data);const key=operation.entity;
   if(operation.action==='delete')data[key]=data[key].filter(item=>item.id!==operation.id);
