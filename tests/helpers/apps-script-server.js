@@ -41,7 +41,7 @@ export function server({authenticate=true,configured=true}={}){
  vm.createContext(context);vm.runInContext(readFileSync(new URL('../../public/apps-script/Code.gs',import.meta.url),'utf8'),context);
  context.setupAnffel();
  if(configured){props.set('ANFFEL_ACCESS_PASSWORD','test-only-password-123!');props.set('ANFFEL_RECOVERY_CODE','test-only-recovery-code-456!');}
- const token=authenticate&&configured?context.authenticateAccess({password:'test-only-password-123!'}).token:'';
+ const token='';
  const business=['getLedger','initializeLedger','saveLedgerOperation','createIncomeReport','downloadIncomeReport','getPreorders','savePreorderOperation'];
  const call=(name,arg)=>JSON.parse(JSON.stringify(business.includes(name)?context.anffelRpc({name,arg,token}):context[name](arg)));
  return {call,context,ledger,books,props,rawWrites,token,cache,advanceTime:ms=>{testNow+=ms;},restart:()=>vm.runInContext(readFileSync(new URL('../../public/apps-script/Code.gs',import.meta.url),'utf8'),context),setUser:v=>{activeUser=v;},failCompletion:(sheet='変更履歴')=>{failComplete=sheet;},block:()=>{blocked=true;},isLocked:()=>lockHeld};

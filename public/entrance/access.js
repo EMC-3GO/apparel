@@ -1,1 +1,1 @@
-// Password authentication now runs inside the owner-only Google Apps Script app.
+// The public demo opens directly without login.

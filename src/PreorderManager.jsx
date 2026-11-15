@@ -3,9 +3,10 @@ import {Plus,Pencil,X,Check,Trash2,RefreshCw,Search,Package} from 'lucide-react'
 import {preorderSteps,preorderStatuses,preorderStatus,completedPreorderSteps,japanToday,validatePreorderOperation} from './preorder.js';
 import {LocalPreorderStore,AppsScriptPreorderStore} from './storage/preorder.js';
 import './preorder.css';
+import {demoStorage} from './storage/demo.js';
 const blankData=()=>({orders:[],campaigns:[]});
 export default function PreorderManager({googleMode,products,connected}){
- const [store]=useState(()=>googleMode?new AppsScriptPreorderStore():new LocalPreorderStore());
+ const [store]=useState(()=>googleMode?new AppsScriptPreorderStore():new LocalPreorderStore(demoStorage()));
  const [data,setData]=useState(blankData),[ready,setReady]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[modal,setModal]=useState(null),[query,setQuery]=useState(''),[productId,setProductId]=useState('all');
  const lock=useRef(false),today=japanToday();
  useEffect(()=>{if(connected)read();},[connected,store]);

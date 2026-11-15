@@ -4,7 +4,7 @@ const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless
 const page=await browser.newPage({viewport:{width:1440,height:1100}});
 page.setDefaultTimeout(8000);
 const errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.goto('http://127.0.0.1:5173');
+await page.goto('http://127.0.0.1:5173/legacy/');
 await page.getByRole('heading',{name:'ダッシュボード'}).waitFor();
 assert.equal(await page.title(),'ANFFEL — ブランドの収支管理');
 await page.getByRole('link',{name:'ANFFEL アパレル事業の収支管理'}).waitFor();

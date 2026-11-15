@@ -34,6 +34,7 @@ try{
  assert.equal(await dialog.getByLabel('対象商品',{exact:true}).isDisabled(),true);
  await dialog.getByLabel('タイトル',{exact:true}).fill('Google保存の検証');
  await dialog.getByLabel('金額（円）',{exact:true}).fill('2000');
+ await dialog.getByLabel('日付',{exact:true}).fill('2026-10-18');
  backend.failCompletion();
  await dialog.getByRole('button',{name:'登録する',exact:true}).click();
  await dialog.getByRole('alert').waitFor();

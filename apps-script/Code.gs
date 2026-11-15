@@ -31,7 +31,7 @@ function anffelOwner_(){
 function anffelLocked_(fn){
  var props=anffelOwner_(),lock=LockService.getScriptLock();
  if(!lock.tryLock(20000))throw new Error('ほかの保存処理を実行中です。少し待ってからお試しください。');
- try{anffelRequireAccess_(ANFFEL_RPC_TOKEN_,props);return fn(SpreadsheetApp.openById(props.getProperty('ANFFEL_SHEET_ID')),props);}finally{lock.releaseLock();}
+ try{return fn(SpreadsheetApp.openById(props.getProperty('ANFFEL_SHEET_ID')),props);}finally{lock.releaseLock();}
 }
 function doGet(){anffelOwner_();return HtmlService.createHtmlOutput(ANFFEL_HTML).setTitle('ANFFEL — ブランドの収支管理').addMetaTag('viewport','width=device-width, initial-scale=1.0');}
 function anffelLiteral_(value){return typeof value==='string'?"'"+value:value===undefined?'':value;}
